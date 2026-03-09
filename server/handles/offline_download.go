@@ -575,7 +575,7 @@ func cleanOfflineURL(raw string) string {
 	if trimmed == "" {
 		return ""
 	}
-	trimmed = strings.Trim(trimmed, "\"'¡°¡±¡®¡¯()[]{}<>£¬¡£,.;£»!£¡?£¿")
+	trimmed = strings.Trim(trimmed, "\"'()[]{}<>,.;!?")
 	return strings.TrimSpace(trimmed)
 }
 
