@@ -1,12 +1,14 @@
 package handles
 
 import (
+	"regexp"
 	"strings"
 
 	_115 "github.com/OpenListTeam/OpenList/v4/drivers/115"
 	_115_open "github.com/OpenListTeam/OpenList/v4/drivers/115_open"
 	_123 "github.com/OpenListTeam/OpenList/v4/drivers/123"
 	_123_open "github.com/OpenListTeam/OpenList/v4/drivers/123_open"
+	halalcloudopen "github.com/OpenListTeam/OpenList/v4/drivers/halalcloud_open"
 	"github.com/OpenListTeam/OpenList/v4/drivers/pikpak"
 	"github.com/OpenListTeam/OpenList/v4/drivers/thunder"
 	"github.com/OpenListTeam/OpenList/v4/drivers/thunder_browser"
@@ -292,6 +294,50 @@ func Set123Open(c *gin.Context) {
 	common.SuccessResp(c, "ok")
 }
 
+
+type SetHalalCloudOpenReq struct {
+	TempDir string `json:"temp_dir" form:"temp_dir"`
+}
+
+func SetHalalCloudOpen(c *gin.Context) {
+	var req SetHalalCloudOpenReq
+	if err := c.ShouldBind(&req); err != nil {
+		common.ErrorResp(c, err, 400)
+		return
+	}
+	if req.TempDir != "" {
+		storage, _, err := op.GetStorageAndActualPath(req.TempDir)
+		if err != nil {
+			common.ErrorStrResp(c, "storage does not exists", 400)
+			return
+		}
+		if storage.Config().CheckStatus && storage.GetStorage().Status != op.WORK {
+			common.ErrorStrResp(c, "storage not init: "+storage.GetStorage().Status, 400)
+			return
+		}
+		if _, ok := storage.(*halalcloudopen.HalalCloudOpen); !ok {
+			common.ErrorStrResp(c, "unsupported storage driver for offline download, only HalalCloudOpen is supported", 400)
+			return
+		}
+	}
+	items := []model.SettingItem{
+		{Key: conf.HalalCloudOpenTempDir, Value: req.TempDir, Type: conf.TypeString, Group: model.OFFLINE_DOWNLOAD, Flag: model.PRIVATE},
+	}
+	if err := op.SaveSettingItems(items); err != nil {
+		common.ErrorResp(c, err, 500)
+		return
+	}
+	_tool, err := tool.Tools.Get("HalalCloudOpen")
+	if err != nil {
+		common.ErrorResp(c, err, 500)
+		return
+	}
+	if _, err := _tool.Init(); err != nil {
+		common.ErrorResp(c, err, 500)
+		return
+	}
+	common.SuccessResp(c, "ok")
+}
 type SetPikPakReq struct {
 	TempDir string `json:"temp_dir" form:"temp_dir"`
 }
@@ -474,11 +520,63 @@ func OfflineDownloadTools(c *gin.Context) {
 	common.SuccessResp(c, tools)
 }
 
+var magnetLinkRegex = regexp.MustCompile(`(?i)magnet:\?[^\s"'<>]+`)
+
 type AddOfflineDownloadReq struct {
 	Urls         []string `json:"urls"`
+	RawText      string   `json:"raw_text"`
 	Path         string   `json:"path"`
 	Tool         string   `json:"tool"`
 	DeletePolicy string   `json:"delete_policy"`
+}
+
+func collectOfflineURLs(req AddOfflineDownloadReq) []string {
+	seen := make(map[string]struct{})
+	urls := make([]string, 0)
+	add := func(raw string) {
+		raw = strings.TrimSpace(raw)
+		if raw == "" {
+			return
+		}
+		matches := magnetLinkRegex.FindAllString(raw, -1)
+		if len(matches) == 0 {
+			cleaned := cleanOfflineURL(raw)
+			if cleaned == "" {
+				return
+			}
+			if _, ok := seen[cleaned]; ok {
+				return
+			}
+			seen[cleaned] = struct{}{}
+			urls = append(urls, cleaned)
+			return
+		}
+		for _, match := range matches {
+			cleaned := cleanOfflineURL(match)
+			if cleaned == "" {
+				continue
+			}
+			if _, ok := seen[cleaned]; ok {
+				continue
+			}
+			seen[cleaned] = struct{}{}
+			urls = append(urls, cleaned)
+		}
+	}
+	for _, u := range req.Urls {
+		add(u)
+	}
+	add(req.RawText)
+	return urls
+}
+
+func cleanOfflineURL(raw string) string {
+	trimmed := strings.TrimSpace(raw)
+	if trimmed == "" {
+		return ""
+	}
+	trimmed = strings.Trim(trimmed, "\"'¡°¡±¡®¡¯()[]{}<>£¬¡£,.;£»!£¡?£¿")
+	return strings.TrimSpace(trimmed)
 }
 
 func AddOfflineDownload(c *gin.Context) {
@@ -498,16 +596,17 @@ func AddOfflineDownload(c *gin.Context) {
 		common.ErrorResp(c, err, 403)
 		return
 	}
-	var tasks []task.TaskExtensionInfo
-	for _, url := range req.Urls {
-		// Filter out empty lines and whitespace-only strings
-		trimmedUrl := strings.TrimSpace(url)
-		if trimmedUrl == "" {
-			continue
-		}
 
+	urls := collectOfflineURLs(req)
+	if len(urls) == 0 {
+		common.ErrorStrResp(c, "no valid download url found", 400)
+		return
+	}
+
+	var tasks []task.TaskExtensionInfo
+	for _, u := range urls {
 		t, err := tool.AddURL(c, &tool.AddURLArgs{
-			URL:          trimmedUrl,
+			URL:          u,
 			DstDirPath:   reqPath,
 			Tool:         req.Tool,
 			DeletePolicy: tool.DeletePolicy(req.DeletePolicy),
