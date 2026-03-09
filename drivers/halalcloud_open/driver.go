@@ -4,6 +4,7 @@ import (
 	"github.com/OpenListTeam/OpenList/v4/internal/driver"
 	"github.com/OpenListTeam/OpenList/v4/internal/model"
 	sdkClient "github.com/halalcloud/golang-sdk-lite/halalcloud/apiclient"
+	sdkOffline "github.com/halalcloud/golang-sdk-lite/halalcloud/services/offline"
 	sdkUser "github.com/halalcloud/golang-sdk-lite/halalcloud/services/user"
 	sdkUserFile "github.com/halalcloud/golang-sdk-lite/halalcloud/services/userfile"
 )
@@ -15,6 +16,7 @@ type HalalCloudOpen struct {
 	sdkClient          *sdkClient.Client
 	sdkUserFileService *sdkUserFile.UserFileService
 	sdkUserService     *sdkUser.UserService
+	sdkOfflineService  *sdkOffline.OfflineTaskService
 	uploadThread       int
 }
 

@@ -7,6 +7,7 @@ import (
 	"github.com/OpenListTeam/OpenList/v4/internal/op"
 	"github.com/halalcloud/golang-sdk-lite/halalcloud/apiclient"
 	sdkUser "github.com/halalcloud/golang-sdk-lite/halalcloud/services/user"
+	sdkOffline "github.com/halalcloud/golang-sdk-lite/halalcloud/services/offline"
 	sdkUserFile "github.com/halalcloud/golang-sdk-lite/halalcloud/services/userfile"
 )
 
@@ -40,11 +41,12 @@ func (d *HalalCloudOpen) Init(ctx context.Context) error {
 	d.sdkClient = client
 	d.sdkUserFileService = sdkUserFile.NewUserFileService(client)
 	d.sdkUserService = sdkUser.NewUserService(client)
+	d.sdkOfflineService = sdkOffline.NewOfflineTaskService(client)
 	userInfo, err := d.sdkUserService.Get(ctx, &sdkUser.User{})
 	if err != nil {
 		return err
 	}
 	d.halalCommon.UserInfo = userInfo
-	// 能够获取到用户信息，已经检查了 RefreshToken 的有效性，无需再次检查
+	// 能够获取到用户信息，已经检查了 RefreshToken 的有效性，无需再次检�?
 	return nil
 }
