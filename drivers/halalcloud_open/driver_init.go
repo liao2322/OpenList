@@ -6,8 +6,8 @@ import (
 
 	"github.com/OpenListTeam/OpenList/v4/internal/op"
 	"github.com/halalcloud/golang-sdk-lite/halalcloud/apiclient"
-	sdkUser "github.com/halalcloud/golang-sdk-lite/halalcloud/services/user"
 	sdkOffline "github.com/halalcloud/golang-sdk-lite/halalcloud/services/offline"
+	sdkUser "github.com/halalcloud/golang-sdk-lite/halalcloud/services/user"
 	sdkUserFile "github.com/halalcloud/golang-sdk-lite/halalcloud/services/userfile"
 )
 
@@ -46,6 +46,6 @@ func (d *HalalCloudOpen) Init(ctx context.Context) error {
 	if err != nil {
 		return err
 	}
-	d.halalCommon.UserInfo = userInfo	// User info was fetched successfully, so the refresh token is valid.
+	d.halalCommon.UserInfo = userInfo // User info was fetched successfully, so the refresh token is valid.
 	return nil
 }

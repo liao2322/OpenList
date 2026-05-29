@@ -296,7 +296,6 @@ func Set123Open(c *gin.Context) {
 	common.SuccessResp(c, "ok")
 }
 
-
 type SetHalalCloudOpenReq struct {
 	TempDir string `json:"temp_dir" form:"temp_dir"`
 }
@@ -340,6 +339,7 @@ func SetHalalCloudOpen(c *gin.Context) {
 	}
 	common.SuccessResp(c, "ok")
 }
+
 type SetPikPakReq struct {
 	TempDir string `json:"temp_dir" form:"temp_dir"`
 }
